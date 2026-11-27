@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/TestResults/
+.vs/
+*.user
+__pycache__/
+artifacts/
+
+# Private deployment state and credentials
+toolbox-state.json
+/toolbox.json
+/integrations/liulianbot/config.json

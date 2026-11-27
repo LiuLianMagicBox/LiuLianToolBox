@@ -1,0 +1,18 @@
+{
+  "listen": "127.0.0.1:48750",
+  "stateFile": "toolbox-state.json",
+  "users": {
+    "111111111111111111": {
+      "idle": true,
+      "mailbox": true,
+      "email": "owner@example.invalid"
+    }
+  },
+  "smtp": {
+    "host": "mail.example.invalid",
+    "port": 465,
+    "from": "toolbox@example.invalid",
+    "username": "toolbox@example.invalid",
+    "relayInbox": "toolbox-dm@example.invalid"
+  }
+}
