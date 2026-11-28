@@ -14,6 +14,24 @@ public class DeviceTests : IDisposable
     public void Dispose() => Directory.Delete(dir, true);
 
     [Fact]
+    public void ExistingSettingsFollowWindowsUntilAnAppearanceIsSaved()
+    {
+        var path = Path.Combine(dir, "settings.json");
+        File.WriteAllText(path, """{"name":"Studio PC","language":"EN","apps":[{"id":"player","name":"Music","path":"player.exe"}]}""");
+        var store = new SettingsStore(path);
+        var settings = store.Load();
+        Assert.Equal("System", settings.Appearance);
+        settings.Appearance = "Dark";
+        store.Save(settings);
+
+        var saved = store.Load();
+        Assert.Equal("Dark", saved.Appearance);
+        Assert.Equal("Studio PC", saved.Name);
+        Assert.Equal("EN", saved.Language);
+        Assert.Equal("player", Assert.Single(saved.Apps).Id);
+    }
+
+    [Fact]
     public void LanguageResourcesAndNavigationMatchTheSpec()
     {
         var asm = typeof(Catalog).Assembly;

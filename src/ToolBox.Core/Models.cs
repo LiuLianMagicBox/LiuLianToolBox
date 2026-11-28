@@ -32,6 +32,7 @@ public sealed record SavedAlarm(Alarm Alarm, bool Fired);
 
 public sealed class Settings
 {
+    public string Appearance { get; set; } = "System";
     public string Language { get; set; } = "ZH_TW";
     public string Name { get; set; } = Environment.MachineName;
     public bool Follow { get; set; }

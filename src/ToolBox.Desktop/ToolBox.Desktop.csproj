@@ -6,9 +6,11 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RootNamespace>LiuLian.ToolBox.Desktop</RootNamespace>
     <AssemblyName>LiuLianToolBox</AssemblyName>
+    <ApplicationIcon>Assets/ToolBox.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Assets/ToolBox.ico" />
     <ProjectReference Include="../ToolBox.Core/ToolBox.Core.csproj" />
   </ItemGroup>
 </Project>
