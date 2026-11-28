@@ -100,7 +100,8 @@ public class DeviceTests : IDisposable
         var store = new SettingsStore(Path.Combine(dir, "settings.json"));
         var s = store.Load();
         Assert.Equal("ZH_TW", s.Language);
-        s.DeviceId = "a"; s.Apps.Add(new("player", "Music", marker));
+        s.LinkDevice("a", "protected-test-token");
+        s.Apps.Add(new("player", "Music", marker));
         var opened = new List<string>();
         var actions = new DeviceActions(s, () => store.Save(s), opened.Add);
         var job = new Launch("request", "b", "a", "player");
@@ -121,7 +122,9 @@ public class DeviceTests : IDisposable
     public void AlarmIsStoredBeforeAckAndRingsOnceAcrossRestarts()
     {
         var store = new SettingsStore(Path.Combine(dir, "settings.json"));
-        var s = store.Load(); var actions = new DeviceActions(s, () => store.Save(s), _ => { });
+        var s = store.Load();
+        s.LinkDevice("a", "protected-test-token");
+        var actions = new DeviceActions(s, () => store.Save(s), _ => { });
         var now = DateTimeOffset.UtcNow;
         var alarm = new Alarm("alarm-1", now.AddMinutes(1));
         Assert.Equal(new[] { alarm.Id }, actions.AcceptAlarms([alarm, alarm]));
@@ -139,7 +142,8 @@ public class DeviceTests : IDisposable
     [Fact]
     public void DiskFailureDoesNotAcknowledgeAnAlarmOrStartAProgram()
     {
-        var s = new Settings { DeviceId = "a" };
+        var s = new Settings();
+        s.LinkDevice("a", "protected-test-token");
         var app = Path.Combine(dir, "player.exe");
         File.WriteAllText(app, "");
         s.Apps.Add(new("player", "Player", app));
@@ -163,14 +167,46 @@ public class DeviceTests : IDisposable
     }
 
     [Theory]
-    [InlineData("http://relay.example")]
-    [InlineData("https://user:password@relay.example")]
-    [InlineData("file:///tmp/relay")]
-    [InlineData("https://relay.example/?token=abc")]
-    public void RejectsUnsafeCredentialDestinations(string url) =>
-        Assert.Throws<BotError>(() => BotClient.Address(url));
-
-    [Fact]
-    public void HttpsReverseProxyCanUseAPrefix() =>
-        Assert.Equal("https://relay.example/toolbox/v1/", BotClient.Address("https://relay.example/toolbox/").AbsoluteUri);
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    [InlineData("https://other.example/toolbox", false)]
+    [InlineData("http://127.0.0.1:48750", false)]
+    [InlineData("http://www.liulian.dev/toolbox", false)]
+    [InlineData("https://www.liulian.dev:444/toolbox", false)]
+    [InlineData("https://www.liulian.dev/Toolbox", false)]
+    [InlineData("https://www.liulian.dev/toolbox?test", false)]
+    [InlineData("https://www.liulian.dev/toolbox#test", false)]
+    [InlineData("https://test@www.liulian.dev/toolbox", false)]
+    [InlineData("https://www.liulian.dev@other.example/toolbox", false)]
+    [InlineData("https://www.liulian.dev/toolbox", true)]
+    [InlineData("https://WWW.LIULIAN.DEV:443/toolbox/", true)]
+    public void UpgradeKeepsDeviceDataOnlyForTheOfficialService(string? endpoint, bool keep)
+    {
+        var path = Path.Combine(dir, "settings.json");
+        var old = new Dictionary<string, object> {
+            ["name"] = "Studio", ["language"] = "EN", ["appearance"] = "Dark", ["follow"] = true,
+            ["source"] = new { id = "screen:1", name = "Screen" },
+            ["apps"] = new[] { new { id = "music", name = "Music", path = "music.exe" } },
+            ["deviceId"] = "pc", ["protectedToken"] = "old-token",
+            ["results"] = new { job = new { at = DateTimeOffset.UnixEpoch, code = "Launched" } },
+            ["alarms"] = new { morning = new { alarm = new { id = "morning", due = DateTimeOffset.UnixEpoch }, fired = false } }
+        };
+        if (endpoint is not null) old["endpoint"] = endpoint;
+        File.WriteAllText(path, JsonSerializer.Serialize(old));
+        var store = new SettingsStore(path);
+        foreach (var settings in new[] { store.Load(), store.Load() })
+        {
+            Assert.Equal("Studio", settings.Name);
+            Assert.Equal("EN", settings.Language);
+            Assert.Equal("Dark", settings.Appearance);
+            Assert.True(settings.Follow);
+            Assert.Equal("screen:1", settings.Source!.Id);
+            Assert.Equal("music", Assert.Single(settings.Apps).Id);
+            Assert.Equal(keep ? "old-token" : "", settings.ProtectedToken);
+            Assert.Equal(keep ? "pc" : "", settings.DeviceId);
+            Assert.Equal(keep, settings.Alarms.ContainsKey("morning"));
+            Assert.Equal(keep, settings.Results.ContainsKey("job"));
+        }
+        if (!keep) Assert.DoesNotContain("old-token", File.ReadAllText(path));
+    }
 }

@@ -172,22 +172,22 @@ internal sealed partial class MainForm
         if (settings.ProtectedToken.Length == 0)
         {
             Note(bot, text["LinkHelp"]);
-            var url = Input(bot, "BotUrl", settings.Endpoint, 1000);
             var code = Input(bot, "LinkCode", "", 64); code.UseSystemPasswordChar = true;
             var link = ButtonFor(Actions(bot), "Link", Glyph.Link, async () =>
             {
-                var address = url.Text.Trim();
-                using var candidate = new BotClient(address, null);
+                using var candidate = new BotClient();
                 var credentials = await candidate.Post<Credentials>("link", new { code = code.Text.Trim(), settings.Name }, closing.Token);
-                settings.ProtectedToken = WindowsEnvironment.Protect(credentials.Token);
-                settings.DeviceId = credentials.Id; settings.Endpoint = address;
-                Save(); client = new(address, credentials.Token); connectionKey = "BotUnavailable";
+                settings.LinkDevice(credentials.Id, WindowsEnvironment.Protect(credentials.Token));
+                try { Save(); }
+                catch { settings.ForgetDevice(); throw; }
+                client = new(credentials.Token); connectionKey = "BotUnavailable";
                 Report("Saved"); Render(); await Poll();
             }, ButtonKind.Primary);
-            void Ready() => link.Available = !string.IsNullOrWhiteSpace(url.Text) && !string.IsNullOrWhiteSpace(code.Text);
-            url.TextChanged += (_, _) => Ready(); code.TextChanged += (_, _) => Ready(); Ready(); return;
+            link.Available = false;
+            code.TextChanged += (_, _) => link.Available = !string.IsNullOrWhiteSpace(code.Text);
+            return;
         }
-        Note(bot, settings.Endpoint, false); Note(bot, text.Format("DeviceID", settings.DeviceId));
+        Note(bot, BotClient.ServiceUrl, false); Note(bot, text.Format("DeviceID", settings.DeviceId));
         if (state is null) Note(bot, text[connectionKey]);
         var bar = Actions(bot);
         ButtonFor(bar, "Unlink", Glyph.Unlink, async () =>
@@ -242,8 +242,8 @@ internal sealed partial class MainForm
 
     private void Forget()
     {
-        client?.Dispose(); client = null; alarmAcks = []; settings.ProtectedToken = ""; settings.DeviceId = "";
-        settings.Results.Clear(); settings.Alarms.Clear(); Save(); connectionKey = "NotLinked";
+        client?.Dispose(); client = null; alarmAcks = []; settings.ForgetDevice();
+        Save(); connectionKey = "NotLinked";
         SetState(null); Report("Saved"); Render();
     }
 

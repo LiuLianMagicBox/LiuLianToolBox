@@ -32,6 +32,8 @@ LiuLianToolBox 的目標是讓兩部已配對的 PC 同步 Discord 語音頻道�
 
 LiuLianBot 是獨立的 Go 專案。它已有 slash command 註冊、權限判斷及私人語音頻道擁有權紀錄。擴充時可從該專案的 `discord-part/tools/interaction_args.json` 及 `discord-part/internal/bot/voice.go` 入手。Bot 憑證由 LiuLianBot 保管。
 
+桌面用戶端只使用官方 LiuLianBot 服務，固定經 `https://www.liulian.dev/toolbox/v1/` 連線。使用者只需輸入官方 Bot 發出的連結碼。升級時只可沿用同一官方服務簽發的裝置憑證。
+
 - **鬧鐘。** 使用者透過 LiuLianBot 的 slash command 設定時間，可指定自己的 ToolBox 用戶端。省略目標時，採用該使用者在 `Discord Bot Config` 選定的預設用戶端。回覆須列明目標 PC 和響鬧時間。例如預設為 A 而指令指定 B，鬧鐘就只應在 B 響起。未設預設值時請使用者選擇，目標離線時回報狀態。
 - **私人語音頻道。** 在 `Discord Bot Config` 顯示使用者擁有的頻道，並可修改頻道名稱和人數上限。儲存時由 LiuLianBot 再核對擁有權及 Discord 權限，避免擁有權轉移後舊擁有人仍可修改。
 - **閒置自動回覆。** 獲授權使用者可設定聯絡人在其閒置期間會收到的回覆。有人透過 LiuLianBot 聯絡該使用者時，Bot 會檢查開關及閒置狀態，以 Bot 身分發送設定好的回覆。使用者恢復活動後，停止自動回覆。

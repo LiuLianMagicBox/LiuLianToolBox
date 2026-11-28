@@ -42,7 +42,7 @@ internal sealed partial class MainForm : Form
         {
             try
             {
-                client = new(settings.Endpoint, WindowsEnvironment.Unprotect(settings.ProtectedToken));
+                client = new(WindowsEnvironment.Unprotect(settings.ProtectedToken));
                 connectionKey = "BotUnavailable";
             }
             catch (Exception ex) when (ex is CryptographicException or FormatException or BotError) { connectionKey = "Unauthorized"; }

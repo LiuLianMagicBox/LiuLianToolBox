@@ -14,30 +14,37 @@ public sealed record Invite(string Code);
 
 public sealed class BotClient : IDisposable
 {
+    public const string ServiceUrl = "https://www.liulian.dev/toolbox";
     private readonly HttpClient http;
-    public static Uri Address(string address)
-    {
-        if (!Uri.TryCreate(address.Trim(), UriKind.Absolute, out var uri) || uri.UserInfo != "" ||
-            uri.Query != "" || uri.Fragment != "" ||
-            (uri.Scheme != "https" && !(uri.Scheme == "http" && uri.IsLoopback)))
-            throw new BotError("InvalidUrl");
-        return new Uri(uri.AbsoluteUri.TrimEnd('/') + "/v1/");
-    }
 
-    public BotClient(string address, string? token)
+    internal static bool IsOfficialService(string? address) =>
+        Uri.TryCreate(address, UriKind.Absolute, out var uri) && uri.AbsoluteUri.TrimEnd('/') == ServiceUrl;
+
+    public BotClient(string? token = null) : this(token, new HttpClientHandler()) { }
+
+    internal BotClient(string? token, HttpClientHandler handler)
     {
-        http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
+        handler.AllowAutoRedirect = false;
+        handler.UseCookies = false;
+        http = new HttpClient(handler)
         {
-            BaseAddress = Address(address), Timeout = TimeSpan.FromSeconds(25),
+            BaseAddress = new Uri(ServiceUrl + "/v1/"), Timeout = TimeSpan.FromSeconds(25),
             MaxResponseContentBufferSize = 1024 * 1024
         };
+        http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("LiuLianToolBox",
+            typeof(BotClient).Assembly.GetName().Version!.ToString(3)));
         if (!string.IsNullOrEmpty(token))
             http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
     public async Task<T> Post<T>(string route, object body, CancellationToken ct = default)
     {
+        if (route is not ("link" or "unlink" or "sync" or "result" or "launch" or "default" or
+            "pair/invite" or "pair/accept" or "pair/remove" or "pair/share" or "voice/join" or
+            "channels" or "channel" or "idle" or "mailbox"))
+            throw new ArgumentOutOfRangeException(nameof(route));
         using var response = await http.PostAsJsonAsync(route, body, ct);
+        if ((int)response.StatusCode is >= 300 and < 400) throw new BotError("BotUnavailable");
         if (!response.IsSuccessStatusCode)
         {
             Reply? reason = null;

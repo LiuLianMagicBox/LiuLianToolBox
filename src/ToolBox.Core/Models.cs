@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace LiuLian.ToolBox;
 
@@ -38,20 +39,48 @@ public sealed class Settings
     public bool Follow { get; set; }
     public ShareSource? Source { get; set; }
     public List<LocalApp> Apps { get; set; } = [];
-    public string Endpoint { get; set; } = "";
-    public string DeviceId { get; set; } = "";
-    public string ProtectedToken { get; set; } = "";
+    // Older clients stored the issuer of their device credential under "endpoint".
+    [JsonInclude, JsonPropertyName("endpoint"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    internal string? CredentialIssuer { get; private set; }
+    [JsonInclude] public string DeviceId { get; private set; } = "";
+    [JsonInclude] public string ProtectedToken { get; private set; } = "";
     public Dictionary<string, LaunchResult> Results { get; set; } = [];
     public Dictionary<string, SavedAlarm> Alarms { get; set; } = [];
+
+    public void LinkDevice(string id, string protectedToken)
+    {
+        CredentialIssuer = BotClient.ServiceUrl;
+        DeviceId = id;
+        ProtectedToken = protectedToken;
+    }
+
+    public void ForgetDevice()
+    {
+        CredentialIssuer = null;
+        DeviceId = "";
+        ProtectedToken = "";
+        Results.Clear();
+        Alarms.Clear();
+    }
 }
 
 public sealed class SettingsStore(string path)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    public Settings Load() => File.Exists(path)
-        ? JsonSerializer.Deserialize<Settings>(File.ReadAllBytes(path), Json) ?? throw new JsonException()
-        : new();
+    public Settings Load()
+    {
+        if (!File.Exists(path)) return new();
+        var settings = JsonSerializer.Deserialize<Settings>(File.ReadAllBytes(path), Json) ?? throw new JsonException();
+        if (!BotClient.IsOfficialService(settings.CredentialIssuer) &&
+            (settings.CredentialIssuer is not null || settings.ProtectedToken != "" || settings.DeviceId != "" ||
+             settings.Results.Count > 0 || settings.Alarms.Count > 0))
+        {
+            settings.ForgetDevice();
+            Save(settings);
+        }
+        return settings;
+    }
 
     public void Save(Settings settings)
     {

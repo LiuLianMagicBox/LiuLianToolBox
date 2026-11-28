@@ -5,5 +5,6 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Locales/*.json" WithCulture="false" />
+    <InternalsVisibleTo Include="ToolBox.Tests" />
   </ItemGroup>
 </Project>

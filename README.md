@@ -1,6 +1,6 @@
 # LiuLianToolBox
 
-LiuLianToolBox 是兩部 Windows 電腦使用的 Discord 桌面工具。兩端各執行一個用戶端，透過 LiuLianBot 配對。首頁顯示兩部電腦的連線、語音頻道和最近一次動作。介面預設為繁體中文，可在本機設定切換至簡體中文或英文。
+LiuLianToolBox 是兩部 Windows 電腦使用的 Discord 桌面工具。兩端各執行一個用戶端，只透過官方 LiuLianBot 服務配對。首頁顯示兩部電腦的連線、語音頻道和最近一次動作。介面預設為繁體中文，可在本機設定切換至簡體中文或英文。
 
 ![首頁顯示兩部測試電腦的連線狀態、Discord 語音頻道及遠端啟動結果](docs/images/desktop-home.png)
 
@@ -23,13 +23,15 @@ dotnet publish src/ToolBox.Desktop -c Release -r win-x64 --self-contained true -
 
 ## 配對與雙 PC 動作
 
-1. 在每部電腦的「本機設定」填寫容易辨認的名稱並儲存。在 Discord 執行 `/toolbox link`，將該次取得的連結碼及管理員提供的服務網址填入該機的「Discord 機器人設定」。每部電腦各用一個連結碼。
+1. 在每部電腦的「本機設定」填寫容易辨認的名稱並儲存。在 Discord 選擇官方 **LiuLian** 機器人的 `/toolbox link`，將連結碼貼到該機的「Discord 機器人設定」，按「連結此電腦」。每部電腦各用一個連結碼。程式會自動連到 `https://www.liulian.dev/toolbox`。
 2. 在 A 的「遠端電腦設定」按「產生配對碼」，用「複製配對碼」把代碼交給 B。B 在相同頁面輸入後按「配對」。連結碼及配對碼均只可使用一次，五分鐘後失效。首頁會顯示另一部電腦。
 3. 如要由 A 啟動 B 的程式，先在 B 的「本機設定」選取允許開啟的 `.exe` 並儲存。然後在 A 的首頁選擇程式並按「啟動」。B 會核對發送端、目標裝置及本機清單。A 可查看成功、程式不存在、電腦離線或結果待確認等狀態。
 4. 如要 B 跟隨 A，在 B 啟用語音跟隨，兩個 Discord 帳戶需在 LiuLianBot 可見的伺服器內使用語音頻道。A 加入頻道後，B 可從首頁開啟目標頻道。若 B 身處同一伺服器的另一個語音頻道，亦可按下同意移動的按鈕，由 Bot 核對兩個頻道、雙方權限及人數上限後移動 B。其他情況可於 Discord 手動加入。已核對伺服器及頻道 ID 相同時，提示會消失。同一帳戶連結多部電腦時仍可使用鬧鐘及程式啟動，語音跟隨及分享提示則需要兩個帳戶。[Discord 官方成員移動介面](https://docs.discord.com/developers/resources/guild#modify-guild-member)
 5. 如要在同頻道分享，在「遠端電腦設定」啟用分享提示並選擇負責分享的電腦，再在該機的「本機設定」選取螢幕或視窗。兩端上線且 Bot 確認兩個帳戶位於同一頻道後，所選電腦才會提示在 Discord 選取該來源並按 **Go Live**。曾選擇的視窗關閉後，用戶端會提示重新選取。[Discord 畫面分享操作](https://support.discord.com/hc/en-us/articles/360040816151-Go-Live-and-Screen-Share)
 
 設定和待響鬧鐘儲存在 `%LOCALAPPDATA%\LiuLianToolBox\settings.json`。裝置憑證以目前 Windows 使用者的 DPAPI 加密。電腦向 Bot 發出連線，兩部 PC 均毋須開放入站連接埠。要更換配對電腦，可在遠端設定解除配對。要撤銷遺失電腦的授權，可在 Discord 執行 `/toolbox unlink pc:<裝置 ID>`。
+
+由舊版升級時，已連到同一官方網址的電腦會保留授權。曾使用其他網址或缺少服務記錄的電腦，需要向官方 Bot 重新取碼。舊服務的憑證、待響鬧鐘及動作記錄會從本機清除，裝置名稱、語言、外觀、應用程式清單和語音分享偏好會保留。
 
 ## LiuLianBot 功能
 

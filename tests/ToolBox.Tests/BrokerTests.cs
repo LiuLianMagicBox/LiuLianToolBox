@@ -5,6 +5,17 @@ namespace ToolBox.Tests;
 
 public class BrokerTests
 {
+    private sealed class FixtureHandler(Uri fixture) : HttpClientHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Assert.True(fixture.IsLoopback);
+            Assert.StartsWith(BotClient.ServiceUrl + "/v1/", request.RequestUri!.AbsoluteUri);
+            request.RequestUri = new Uri(fixture, request.RequestUri.AbsoluteUri[BotClient.ServiceUrl.Length..]);
+            return base.SendAsync(request, ct);
+        }
+    }
+
     private sealed class BrokerFactAttribute : FactAttribute
     {
         public BrokerFactAttribute()
@@ -18,13 +29,14 @@ public class BrokerTests
     public async Task TwoDevicesPairLaunchAndReceiveOnlyTheirOwnAlarms()
     {
         var address = Environment.GetEnvironmentVariable("TOOLBOX_TEST_URL")!;
-        using var signup = new BotClient(address, null);
+        BotClient FixtureClient(string? token = null) => new(token, new FixtureHandler(new Uri(address)));
+        using var signup = FixtureClient();
         async Task<Credentials> Enroll(string name, string key) => await signup.Post<Credentials>("link",
             new { name, code = Environment.GetEnvironmentVariable(key) });
         var alice = await Enroll("Alpha", "TOOLBOX_TEST_LINK_A");
         var bob = await Enroll("Beta", "TOOLBOX_TEST_LINK_B");
-        using var a = new BotClient(address, alice.Token);
-        using var b = new BotClient(address, bob.Token);
+        using var a = FixtureClient(alice.Token);
+        using var b = FixtureClient(bob.Token);
         var invite = await a.Post<Invite>("pair/invite", new { });
         await b.Post<Reply>("pair/accept", new { invite.Code });
         async Task<Snapshot> Sync(BotClient pc, string name, AppEntry[] apps) =>
@@ -55,7 +67,8 @@ public class BrokerTests
         Assert.Null(sb.Idle);
         var executable = OperatingSystem.IsWindows()
             ? Path.Combine(Environment.SystemDirectory, "where.exe") : "/bin/true";
-        var local = new Settings { DeviceId = bob.Id, Apps = [new("player", "Music player", executable)] };
+        var local = new Settings { Apps = [new("player", "Music player", executable)] };
+        local.LinkDevice(bob.Id, "protected-test-token");
         var launches = 0;
         var receiver = new DeviceActions(local, () => { }, path => { DeviceActions.OpenProgram(path); launches++; });
         var result = receiver.Receive(sb, job, DateTimeOffset.UtcNow);
