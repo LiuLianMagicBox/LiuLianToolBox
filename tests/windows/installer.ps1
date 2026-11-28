@@ -38,6 +38,8 @@ Add-Type -Namespace ToolBoxTest -Name Window -MemberDefinition @'
 [System.Runtime.InteropServices.DllImport("user32.dll")]
 public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam,
     uint flags, uint timeout, out IntPtr result);
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern bool IsWindowVisible(IntPtr hWnd);
 '@
 
 try {
@@ -70,10 +72,13 @@ try {
             $primary.MainWindowHandle -ne [IntPtr]::Zero -and @(Get-Process -Name LiuLianToolBox).Count -eq 1
         }
         $window = $primary.MainWindowHandle
-        Require ($primary.CloseMainWindow()) 'Could not close the window.'
+        # The title bar sends WM_SYSCOMMAND / SC_CLOSE. A direct WM_CLOSE requests task termination.
+        $reply = [IntPtr]::Zero
+        $sent = [ToolBoxTest.Window]::SendMessageTimeout($window, 0x112, [IntPtr]::new(0xF060), [IntPtr]::Zero, 2, 3000, [ref]$reply)
+        Require ($sent -ne [IntPtr]::Zero) 'The title-bar close command did not reach the window.'
         Wait-For 'Closing the window did not leave ToolBox running in the tray.' {
-            $primary.Refresh()
-            -not $primary.HasExited -and $primary.MainWindowHandle -eq [IntPtr]::Zero
+            Require (-not $primary.HasExited) 'The process exited on title-bar close.'
+            -not [ToolBoxTest.Window]::IsWindowVisible($window)
         }
     }
 
