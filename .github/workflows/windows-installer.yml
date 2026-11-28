@@ -1,0 +1,42 @@
+name: Windows installer
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Test and publish the desktop app
+        shell: pwsh
+        run: |
+          dotnet test LiuLianToolBox.slnx -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet publish src/ToolBox.Desktop -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o artifacts/win-x64
+      - name: Compile the installer
+        shell: pwsh
+        run: |
+          $package = Join-Path $env:RUNNER_TEMP 'inno-setup.exe'
+          $compiler = Join-Path $env:RUNNER_TEMP 'inno'
+          Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-7_1_1/innosetup-7.1.1-x64.exe' -OutFile $package
+          if ((Get-FileHash $package).Hash -ne '8A5A6711C3766A6E5FB74F280BA0E3551E719CE94538D901FDBD1F8F9920B3F0') {
+            throw 'Unexpected Inno Setup compiler checksum.'
+          }
+          $install = Start-Process $package -ArgumentList '/CURRENTUSER', '/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES', "/DIR=`"$compiler`"" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { exit $install.ExitCode }
+          & "$compiler\ISCC.exe" installer\LiuLianToolBox.iss
+      - name: Exercise the installed app
+        shell: pwsh
+        run: ./tests/windows/installer.ps1 -Installer ./artifacts/installer/LiuLianToolBox-Setup-x64.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LiuLianToolBox-Windows-x64
+          path: artifacts/installer/LiuLianToolBox-Setup-x64.exe
+          if-no-files-found: error

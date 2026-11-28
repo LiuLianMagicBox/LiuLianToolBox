@@ -8,18 +8,27 @@ namespace LiuLian.ToolBox.Desktop;
 internal static class Program
 {
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
+        var background = args.Contains("--background", StringComparer.OrdinalIgnoreCase);
+        using var openWindow = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\LiuLianToolBox.OpenWindow");
         using var instance = new Mutex(true, @"Local\LiuLianToolBox.Desktop", out var first);
+        if (!first)
+        {
+            if (!background) openWindow.Set();
+            return;
+        }
         var text = new Catalog(null);
-        if (!first) { MessageBox.Show(text["AlreadyRunning"], "LiuLianToolBox"); return; }
         var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "LiuLianToolBox", "settings.json");
         try
         {
             var store = new SettingsStore(path);
-            Application.Run(new MainForm(store, store.Load()));
+            using var form = new MainForm(store, store.Load(), openWindow);
+            form.FormClosed += (_, _) => Application.ExitThread();
+            form.Start(background);
+            Application.Run();
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         {

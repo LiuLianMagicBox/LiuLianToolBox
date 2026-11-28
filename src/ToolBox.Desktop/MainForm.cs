@@ -16,6 +16,7 @@ internal sealed partial class MainForm : Form
     private readonly CancellationTokenSource closing = new();
     private readonly System.Windows.Forms.Timer timer = new() { Interval = 1000 };
     private readonly NotifyIcon tray = new() { Text = "LiuLianToolBox" };
+    private readonly ContextMenuStrip trayMenu = new();
     private Catalog text;
     private BotClient? client;
     private Snapshot? state;
@@ -25,9 +26,10 @@ internal sealed partial class MainForm : Form
     private object?[] lastArgs = [];
     private string[] alarmAcks = [];
     private bool polling;
+    private bool exiting, backgroundHintShown;
     private DateTime nextPoll;
 
-    public MainForm(SettingsStore store, Settings settings)
+    public MainForm(SettingsStore store, Settings settings, EventWaitHandle openWindow)
     {
         this.store = store; this.settings = settings;
         text = new(settings.Language);
@@ -37,7 +39,14 @@ internal sealed partial class MainForm : Form
         Font = desktopFont = DesktopFont(settings.Language);
         StartPosition = FormStartPosition.CenterScreen;
         Icon = appIcon;
-        tray.Icon = Icon; tray.Visible = true;
+        tray.Icon = Icon;
+        var open = trayMenu.Items.Add(text["TrayOpen"], null, (_, _) => OpenWindow());
+        var exit = trayMenu.Items.Add(text["TrayExit"], null, (_, _) => { exiting = true; Close(); });
+        trayMenu.Opening += (_, _) => { open.Text = text["TrayOpen"]; exit.Text = text["TrayExit"]; };
+        tray.ContextMenuStrip = trayMenu;
+        tray.DoubleClick += (_, _) => OpenWindow();
+        tray.BalloonTipClicked += (_, _) => OpenWindow();
+        tray.Visible = true;
         if (settings.ProtectedToken.Length > 0)
         {
             try
@@ -47,9 +56,11 @@ internal sealed partial class MainForm : Form
             }
             catch (Exception ex) when (ex is CryptographicException or FormatException or BotError) { connectionKey = "Unauthorized"; }
         }
-        tray.DoubleClick += (_, _) => { Show(); WindowState = FormWindowState.Normal; Activate(); };
-        timer.Tick += async (_, _) => await Tick();
-        Shown += async (_, _) => { timer.Start(); await Tick(); };
+        timer.Tick += async (_, _) =>
+        {
+            if (openWindow.WaitOne(0)) OpenWindow();
+            await Tick();
+        };
     }
 
     private static Font DesktopFont(string language)
@@ -67,21 +78,44 @@ internal sealed partial class MainForm : Form
         return new Font((SystemFonts.MessageBoxFont ?? SystemFonts.DefaultFont).FontFamily, 10.5f);
     }
 
-    protected override void OnLoad(EventArgs e)
+    public void Start(bool background)
     {
-        base.OnLoad(e);
+        // A hidden window still needs a handle for session shutdown and tray Exit.
+        _ = Handle;
         var work = Screen.FromControl(this).WorkingArea;
         MinimumSize = new Size(Math.Min(D(650), work.Width), Math.Min(D(450), work.Height));
         ClientSize = new Size(D(1060), D(696));
         Size = new Size(Math.Min(Width, work.Width), Math.Min(Height, work.Height));
         CenterToScreen();
         BuildShell();
+        if (!background) Show();
+        timer.Start();
+    }
+
+    private void OpenWindow()
+    {
+        if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+        Show();
+        Activate();
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        base.OnFormClosing(e);
+        if (e.Cancel || exiting || e.CloseReason != CloseReason.UserClosing) return;
+        e.Cancel = true;
+        Hide();
+        if (!backgroundHintShown)
+        {
+            backgroundHintShown = true;
+            Notify(text["BackgroundHint"]);
+        }
     }
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         timer.Stop(); timer.Dispose(); closing.Cancel(); client?.Dispose();
-        tray.Visible = false; tray.Dispose(); closing.Dispose();
+        tray.Visible = false; tray.Dispose(); trayMenu.Dispose(); closing.Dispose();
         base.OnFormClosed(e);
     }
 

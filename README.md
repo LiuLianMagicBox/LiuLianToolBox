@@ -4,22 +4,30 @@ LiuLianToolBox 是兩部 Windows 電腦使用的 Discord 桌面工具。兩端�
 
 ![首頁顯示兩部測試電腦的連線狀態、Discord 語音頻道及遠端啟動結果](docs/images/desktop-home.png)
 
+## Windows 安裝及背景執行
+
+1. 從官方儲存庫成功的 **Windows installer** 建置下載 `LiuLianToolBox-Windows-x64`，解壓後在兩部電腦各自執行 `LiuLianToolBox-Setup-x64.exe`。安裝程式會將 ToolBox 加到目前使用者的開始功能表，毋須管理員權限。[官方 Windows 安裝程式建置](https://github.com/LiuLianMagicBox/LiuLianToolBox/actions/workflows/windows-installer.yml)
+2. 如想每次登入 Windows 都自動執行，在安裝時勾選「登入 Windows 時在背景啟動 LiuLianToolBox」。預設為關閉。日後可重新執行安裝程式更改選項。
+3. 按視窗的 **×** 後，ToolBox 會收起至時鐘旁的通知區。在電腦開啟及帳戶登入期間，同步、鬧鐘及已授權的遠端動作會繼續執行。按兩下通知區圖示，或再從開始功能表開啟 ToolBox，即可返回同一個視窗。
+4. 要停止背景執行，在通知區圖示按右鍵選「結束 ToolBox」。更新或移除前亦請先結束程式。可從 Windows「設定」的「已安裝的應用程式」移除 ToolBox。重新安裝會沿用本機設定及裝置連結，如需撤銷授權，可先在程式內解除連結。
+
 ## 桌面介面
 
 - 首次開啟時，從首頁按「連結此電腦」設定 LiuLianBot，再按「設定配對」。配對電腦上線並提供可用程式後，即可在首頁選擇程式並啟動。「最近一次動作」會顯示結果及時間。
 - 在「本機設定」的「裝置與外觀」可選擇「跟隨 Windows」、「淺色」或「深色」，按右上角「儲存」即時套用。預設會跟隨 Windows，升級後亦會保留原有裝置設定。
 - 視窗較窄時，側邊選單會收起成圖示。將滑鼠移至圖示可查看頁面名稱，亦可用 Tab 和 Enter 操作。
 
-## 建置與啟動
+## 建置 Windows 安裝程式
 
-在儲存庫根目錄使用 .NET 10 SDK。以下指令會產生包含執行階段的 Windows x64 單檔程式。
+在 Windows 安裝 .NET 10 SDK 及 64 位元 Inno Setup 7，然後在儲存庫根目錄執行以下 PowerShell 指令。安裝程式會包含 .NET 執行階段。[Inno Setup 官方下載](https://jrsoftware.org/inno-setup/downloads)
 
 ```powershell
 dotnet build LiuLianToolBox.slnx -c Release
 dotnet publish src/ToolBox.Desktop -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o artifacts/win-x64
+& "$env:ProgramFiles\Inno Setup 7\ISCC.exe" installer\LiuLianToolBox.iss
 ```
 
-將 `artifacts/win-x64/LiuLianToolBox.exe` 複製到兩部電腦，在各自的 Windows 使用者帳戶下執行。開發時亦可在 Windows 使用 `dotnet run --project src/ToolBox.Desktop`。官方 LiuLianBot 已內建桌面 API，更新並重啟 Bot 後會在 Discord 註冊 `/toolbox`。在 `/help` 的 `command` 選項輸入 `toolbox` 可查看六個子指令。[Bot 建置及主機設定](integrations/liulianbot/README.md)
+輸出為 `artifacts/installer/LiuLianToolBox-Setup-x64.exe`。開發時可在 Windows 使用 `dotnet run --project src/ToolBox.Desktop`，或加上 `-- --background` 測試背景啟動。官方 LiuLianBot 已內建桌面 API。在 Discord 的 `/help` 選擇 `command: toolbox` 可查看六個子指令。[Bot 建置及主機設定](integrations/liulianbot/README.md)
 
 ## 配對與雙 PC 動作
 

@@ -5,6 +5,7 @@ LiuLianToolBox 的目標是讓兩部已配對的 PC 同步 Discord 語音頻道�
 ## 技術及語言
 
 - 桌面端採用 **C# / .NET**。設定介面可用 .NET 資源檔管理譯文，鬧鐘可用計時器觸發，啟動本機應用程式則可用 `System.Diagnostics.Process`。
+- Windows 版本以每位使用者的安裝程式發佈。關閉主視窗會收起至通知區，繼續處理同步及鬧鐘。使用者可從通知區結束程式，亦可在安裝時選擇登入 Windows 後在背景啟動。
 - 支援 `ZH_TW`（繁體中文，預設）、`ZH_CN`（簡體中文）及 `EN`（英文），分別對應 .NET 語言標籤 `zh-TW`、`zh-CN` 及 `en`。選單、通知及錯誤訊息均使用語言資源，三個譯本沿用相同的資源鍵。首次啟動或缺少個別譯文時使用 `ZH_TW`。[.NET 語言資源](https://learn.microsoft.com/en-us/dotnet/core/extensions/localization)
 
 ## 設定選單
