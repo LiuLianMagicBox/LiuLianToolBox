@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the ToolBox extension with the committed sources of an existing LiuLianBot checkout."""
+"""Build the committed LiuLianBot sources, including compatibility with pre-integration checkouts."""
 import argparse
 import os
 from pathlib import Path
@@ -29,6 +29,8 @@ def prepare(checkout, output):
         with zipfile.ZipFile(stream) as archive:
             archive.extractall(output)
     pkg = output / "discord-part/internal/bot"
+    if (pkg / "toolbox_discord.go").is_file():
+        return  # Current bot releases include their own registration, handlers and translations.
     for source in HERE.glob("toolbox*.go"):
         shutil.copyfile(source, pkg / source.name)
     locales = pkg / "toolbox_i18n"

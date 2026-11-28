@@ -19,7 +19,7 @@ dotnet build LiuLianToolBox.slnx -c Release
 dotnet publish src/ToolBox.Desktop -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o artifacts/win-x64
 ```
 
-將 `artifacts/win-x64/LiuLianToolBox.exe` 複製到兩部電腦，在各自的 Windows 使用者帳戶下執行。開發時亦可在 Windows 使用 `dotnet run --project src/ToolBox.Desktop`。網絡功能需要已啟用 ToolBox 擴充的 LiuLianBot。Bot 的建置及主機設定見下方說明。[LiuLianBot 擴充](integrations/liulianbot/README.md)
+將 `artifacts/win-x64/LiuLianToolBox.exe` 複製到兩部電腦，在各自的 Windows 使用者帳戶下執行。開發時亦可在 Windows 使用 `dotnet run --project src/ToolBox.Desktop`。官方 LiuLianBot 已內建桌面 API，更新並重啟 Bot 後會在 Discord 註冊 `/toolbox`。在 `/help` 的 `command` 選項輸入 `toolbox` 可查看六個子指令。[Bot 建置及主機設定](integrations/liulianbot/README.md)
 
 ## 配對與雙 PC 動作
 

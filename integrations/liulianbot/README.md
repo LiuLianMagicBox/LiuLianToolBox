@@ -1,23 +1,23 @@
-# LiuLianBot 的 ToolBox 擴充
+# LiuLianBot 的 ToolBox 整合
 
-此擴充沿用 LiuLianBot 現有的 Discord 工作階段、slash command 註冊及私人語音頻道擁有權資料。桌面端只持有自己的裝置憑證。主機管理員可在 LiuLianToolBox 根目錄使用 Python 3.11、Git 及符合 LiuLianBot `go.mod` 的 Go 工具鏈建置。
+官方 LiuLianBot 的標準執行檔已內建桌面 API。Bot 登入 Discord 時，會一併註冊 `/toolbox link`、`unlink`、`alarm`、`contact`、`message` 及 `receipt`。在 Discord 的 `/help` 選擇 `command: toolbox` 可查看各項用法。[官方 Bot](https://github.com/LiuLianMagicBox/LiuLianBot) · [指令參考](https://github.com/LiuLianMagicBox/LiuLianBot/blob/master/discord-part/tools/interaction_args.md)
+
+## 建置與更新
+
+在包含 `9e21fc1` 的官方 LiuLianBot checkout 執行以下指令，檢查新執行檔包含的子指令。按原有部署方式更新及重啟正在運行的 Bot，讓它登入 Discord 及同步指令。[加入指令的提交](https://github.com/LiuLianMagicBox/LiuLianBot/commit/9e21fc13724c245ff05080d67d2a1f23dd9488b5) · [正式服務更新](https://github.com/LiuLianMagicBox/LiuLianBot/blob/master/deploy/systemd/README.md#upgrade-or-roll-back)
 
 ```sh
-python3 integrations/liulianbot/build.py ../LiuLianBot
+bash start.sh build
+./build/liulianbot commands
 ```
 
-建置工具會從指定 checkout 的 `HEAD` 匯出已提交的 Go 原始碼，在暫存目錄接入擴充，然後產生 `artifacts/liulianbot-toolbox`。已驗證的 LiuLianBot 提交為 `d565e488`。擴充掛接於 Bot 初始化、HTTP listener、指令註冊和互動分派，升級上游時可用下方的整合測試檢查相容性。
+在 LiuLianToolBox 儲存庫亦可執行 `python3 integrations/liulianbot/build.py ../LiuLianBot`，將 Bot checkout 路徑換成實際位置。建置工具匯出該 checkout 的 Git `HEAD`，輸出 `artifacts/liulianbot-toolbox`。遇到舊版 Bot（例如 `d565e488`）時會套用相容擴充，該版本需要明確設定 `LIULIAN_TOOLBOX_CONFIG` 才會註冊指令。
 
 ## 主機設定
 
-1. 複製 `config.example.json` 到主機上的私人設定目錄。將 `LIULIAN_TOOLBOX_CONFIG` 指向這份檔案。相對的 `stateFile` 路徑以設定檔所在目錄為準，服務帳戶需要讀寫權限。此檔案會保存已連結電腦、配對、鬧鐘、使用者設定及留言回條。
-2. 在 `users` 以 Discord 使用者 ID 分別授予 `idle` 和 `mailbox`。需要接收電郵時，在管理員已確認地址屬於該收件人後填寫 `email`。桌面端只能選擇收件方式。權限在設定、聯絡及留言時重新讀取，移除權限會在下一次同步隱藏相關選單。
-3. 在既有 Bot 主機執行下方命令，讓擴充與既有 Bot 共用一個 Discord 工作階段。沿用原專案的 Discord 及 MySQL 設定。服務管理器應啟動此二進位檔的 `serve` 子命令。
-
-```sh
-export LIULIAN_TOOLBOX_CONFIG=/etc/liulianbot/toolbox.json
-./artifacts/liulianbot-toolbox -root /path/to/LiuLianBot serve
-```
+1. 標準 Bot 預設在 `127.0.0.1:48750` 提供桌面 API，裝置資料保存在 Bot 的 `discord-part/toolbox-state.json`。連結裝置、配對及鬧鐘可用預設設定。服務帳戶需要能在狀態檔所在目錄寫入。
+2. 如需自訂設定，在 Bot 主機建立 `discord-part/toolbox.json`，或以 `LIULIAN_TOOLBOX_CONFIG` 指向私人設定檔。相對的 `stateFile` 路徑會以設定檔所在目錄為準。首次加入設定檔或更改監聽埠後請重啟 Bot。[完整設定範例](config.example.json)
+3. 在 `users` 以 Discord 使用者 ID 分別授予 `idle` 和 `mailbox`。需要接收電郵時，在管理員已確認地址屬於該收件人後填寫 `email`。桌面端只能選擇收件方式。Bot 在設定、聯絡及留言時重新讀取權限，撤銷權限會在下一次同步隱藏對應選單。
 
 將 HTTPS 反向代理指向設定中的回環位址，例如 `127.0.0.1:48750`。將服務的 HTTPS 根網址交給桌面使用者，例如 `https://toolbox.example.org`。代理亦可使用路徑前綴，轉送時移除該前綴，使 Bot 收到 `/v1/…`。請在代理保留 `Authorization` 標頭，並讓請求可等待至少 25 秒。用戶端約每兩秒同步，服務在十五秒未收到同步後會將該電腦視為離線。
 
